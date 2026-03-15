@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pet-Pop · AI宠物IP孵化器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Darker+Grotesque:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+body{font-family:'Darker Grotesque',sans-serif;background:#e5e7eb;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;-webkit-font-smoothing:antialiased}
+#root{width:390px;height:100vh;position:relative;background:#fff;overflow:hidden;box-shadow:0 0 40px rgba(0,0,0,0.18)}
+@media(max-width:420px){#root{width:100vw;box-shadow:none}}
+.no-scroll::-webkit-scrollbar{display:none}
+.no-scroll{-ms-overflow-style:none;scrollbar-width:none}
+@keyframes slideInR{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes slideInL{from{transform:translateX(-50px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,183,32,.4)}70%{box-shadow:0 0 0 18px rgba(245,183,32,0)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes toastIn{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.slide-r{animation:slideInR 280ms ease-out forwards}
+.slide-l{animation:slideInL 280ms ease-out forwards}
+.fade-in{animation:fadeIn 200ms ease-out}
+.sheet-up{animation:slideUp 280ms ease-out forwards}
+.toast-in{animation:toastIn 280ms ease-out forwards}
+.bounce{animation:bounce 1.5s ease-in-out infinite}
+.xp-bar{background:linear-gradient(90deg,#F5B720,#F09628,rgba(255,255,255,.4),#F09628,#F5B720);background-size:200% auto;animation:shimmer 2.5s linear infinite}
+.pulse-ring{animation:pulse 2.5s ease-out infinite}
+.spin{animation:spin 1.5s linear infinite}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback}=React;
+
+/* ─── SVG PET ─── */
+const PetSVG=({size=200})=>(
+  <svg width={size} height={size} viewBox="0 0 220 220" fill="none">
+    <ellipse cx="110" cy="170" rx="55" ry="45" fill="#F5B720"/>
+    <ellipse cx="110" cy="155" rx="50" ry="40" fill="#F5B720"/>
+    <ellipse cx="68" cy="188" rx="18" ry="12" fill="#E6A010" transform="rotate(-15 68 188)"/>
+    <ellipse cx="152" cy="188" rx="18" ry="12" fill="#E6A010" transform="rotate(15 152 188)"/>
+    <ellipse cx="110" cy="148" rx="22" ry="20" fill="#FBBF24"/>
+    <circle cx="110" cy="100" r="48" fill="#C2855A"/>
+    <ellipse cx="77" cy="64" rx="16" ry="20" fill="#A0612A" transform="rotate(-18 77 64)"/>
+    <ellipse cx="143" cy="64" rx="16" ry="20" fill="#A0612A" transform="rotate(18 143 64)"/>
+    <ellipse cx="77" cy="64" rx="9" ry="13" fill="#F9A8D4" transform="rotate(-18 77 64)"/>
+    <ellipse cx="143" cy="64" rx="9" ry="13" fill="#F9A8D4" transform="rotate(18 143 64)"/>
+    <circle cx="97" cy="98" r="7" fill="#1A1A1A"/>
+    <circle cx="123" cy="98" r="7" fill="#1A1A1A"/>
+    <circle cx="99" cy="95.5" r="2.5" fill="white"/>
+    <circle cx="125" cy="95.5" r="2.5" fill="white"/>
+    <ellipse cx="110" cy="113" rx="8" ry="5" fill="#E07070"/>
+    <path d="M102 120 Q110 128 118 120" stroke="#C05050" strokeWidth="2" fill="none" strokeLinecap="round"/>
+    <path d="M85 72 L95 54 L110 68 L125 54 L135 72" fill="#F5B720" stroke="#E09910" strokeWidth="1.5"/>
+    <rect x="83" y="70" width="54" height="8" rx="4" fill="#F5B720" stroke="#E09910" strokeWidth="1"/>
+    <circle cx="95" cy="54" r="4" fill="#3B82F6"/>
+    <circle cx="110" cy="66" r="4" fill="#EF4444"/>
+    <circle cx="125" cy="54" r="4" fill="#3B82F6"/>
+  </svg>
+);
+
+/* ─── BOTTOM NAV ─── */
+const NAV_TABS=[
+  {id:'square',label:'Square',icon:'⊞'},
+  {id:'creation',label:'Creation',icon:'✦'},
+  {id:'business',label:'Business',icon:'💼'},
+  {id:'home',label:'Personal',icon:'🐾'},
+];
+const BottomNav=({page,setPage})=>(
+  <div style={{position:'absolute',bottom:0,left:0,right:0,background:'white',
+    borderTop:'1px solid #f0f0f0',boxShadow:'0 -2px 16px rgba(0,0,0,.07)',
+    display:'flex',height:64,zIndex:30}}>
+    {NAV_TABS.map(t=>{
+      const active=page===t.id;
+      return(
+        <button key={t.id} onClick={()=>setPage(t.id)}
+          style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',
+            justifyContent:'center',gap:3,border:'none',background:'none',cursor:'pointer'}}>
+          <span style={{fontSize:20}}>{t.icon}</span>
+          <span style={{fontSize:10,fontWeight:700,color:active?'#F09628':'#9CA3AF'}}>{t.label}</span>
+          {active&&<div style={{position:'absolute',bottom:0,width:24,height:2.5,
+            borderRadius:2,background:'linear-gradient(90deg,#F5B720,#F09628)'}}/>}
+        </button>
+      );
+    })}
+  </div>
+);
+
+/* ─── BOTTOM SHEET ─── */
+const BottomSheet=({open,onClose,title,children})=>{
+  if(!open)return null;
+  return(
+    <>
+      <div onClick={onClose} className="fade-in" style={{position:'fixed',inset:0,
+        background:'rgba(0,0,0,.45)',zIndex:50}}/>
+      <div className="sheet-up" style={{position:'absolute',bottom:0,left:0,right:0,
+        background:'white',borderRadius:'24px 24px 0 0',zIndex:51,maxHeight:'70vh',
+        display:'flex',flexDirection:'column'}}>
+        <div style={{display:'flex',justifyContent:'center',padding:'12px 0 4px'}}>
+          <div style={{width:40,height:4,borderRadius:2,background:'#E5E7EB'}}/>
+        </div>
+        {title&&<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+          padding:'8px 20px 12px',borderBottom:'1px solid #f3f4f6'}}>
+          <span style={{fontWeight:800,fontSize:15,color:'#1A1A1A'}}>{title}</span>
+          <button onClick={onClose} style={{width:28,height:28,borderRadius:'50%',
+            background:'#F3F4F6',border:'none',cursor:'pointer',fontSize:13,color:'#6B7280'}}>✕</button>
+        </div>}
+        <div className="no-scroll" style={{overflowY:'auto',flex:1}}>{children}</div>
+      </div>
+    </>
+  );
+};
+
+/* ─── TOAST ─── */
+const Toast=({msg,visible,onHide})=>{
+  useEffect(()=>{if(visible){const t=setTimeout(onHide,2800);return()=>clearTimeout(t)}},[visible]);
+  if(!visible)return null;
+  return(
+    <div className="toast-in" style={{position:'absolute',bottom:80,left:'50%',
+      transform:'translateX(-50%)',background:'#1A1A1A',color:'white',
+      padding:'12px 24px',borderRadius:9999,fontWeight:700,fontSize:13,
+      whiteSpace:'nowrap',zIndex:60,boxShadow:'0 8px 24px rgba(0,0,0,.25)'}}>
+      🎉 {msg}
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════
+   PAGE 1: ONBOARDING
+═══════════════════════════════════════════ */
+const PERSONALITIES=['呆萌','傲娇','活泼','贪吃'];
+const TRACKS=['吃播','颜值','才艺','故事'];
+const TRACK_ICONS={吃播:'🍗',颜值:'✨',才艺:'🎭',故事:'📖'};
+
+const Onboarding=({onDone})=>{
+  const [step,setStep]=useState(1);
+  const [dir,setDir]=useState('r');
+  const [uploaded,setUploaded]=useState(false);
+  const [tags,setTags]=useState([
+    {id:'a',label:'柴犬系',bg:'#FEF3C7',color:'#D97706'},
+    {id:'b',label:'傲娇型',bg:'#FCE7F3',color:'#BE185D'},
+    {id:'c',label:'萌系外貌',bg:'#EDE9FE',color:'#7C3AED'},
+  ]);
+  const [name,setName]=useState('');
+  const [perso,setPerso]=useState([]);
+  const [track,setTrack]=useState('');
+  const [dragging,setDragging]=useState(false);
+
+  const next=()=>{setDir('r');setStep(s=>s+1)};
+  const back=()=>{setDir('l');setStep(s=>s-1)};
+  const canNext=step===1?uploaded:step===2?name.trim().length>0:true;
+
+  const Gold='linear-gradient(135deg,#F5B720,#F09628)';
+  const pillBtn=(active,onClick,children,extra={})=>(
+    <button onClick={onClick} style={{padding:'8px 18px',borderRadius:9999,fontWeight:700,
+      fontSize:14,border:active?'none':'2px solid #E5E7EB',
+      background:active?Gold:'white',color:active?'white':'#6B7280',
+      boxShadow:active?'0 4px 12px rgba(245,183,32,.35)':'none',cursor:'pointer',
+      transition:'all .2s',...extra}}>
+      {children}
+    </button>
+  );
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',
+      background:'linear-gradient(160deg,#FFFBF0,#FFF8E1)',overflow:'hidden'}}>
+      {/* Header */}
+      <div style={{padding:'52px 24px 12px',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:20}}>
+          <span style={{fontSize:24}}>🐾</span>
+          <span style={{fontSize:20,fontWeight:900,color:'#F09628'}}>Pet-Pop</span>
+        </div>
+        {/* Progress */}
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+          <span style={{fontSize:13,fontWeight:700,color:'#6B7280'}}>
+            {step===1?'上传照片':step===2?'填写信息':'确认 IP'}
+          </span>
+          <span style={{fontSize:13,fontWeight:700,color:'#F09628'}}>{step}/3</span>
+        </div>
+        <div style={{height:6,background:'#E5E7EB',borderRadius:3,overflow:'hidden'}}>
+          <div style={{width:`${step/3*100}%`,height:'100%',
+            background:Gold,borderRadius:3,transition:'width .5s ease'}}/>
+        </div>
+      </div>
+
+      {/* Step Content */}
+      <div key={step} className={dir==='r'?'slide-r':'slide-l'}
+        style={{flex:1,overflowY:'auto',padding:'0 24px 24px'}} >
+
+        {step===1&&(
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div>
+              <h2 style={{fontSize:22,fontWeight:900,color:'#1A1A1A'}}>上传宠物照片</h2>
+              <p style={{fontSize:13,color:'#9CA3AF',marginTop:4}}>AI 将自动识别你的宠物特征</p>
+            </div>
+            <div
+              onDragOver={e=>{e.preventDefault();setDragging(true)}}
+              onDragLeave={()=>setDragging(false)}
+              onDrop={e=>{e.preventDefault();setDragging(false);setUploaded(true)}}
+              onClick={()=>setUploaded(true)}
+              style={{height:uploaded?220:190,borderRadius:18,
+                border:dragging?'2.5px dashed #F09628':uploaded?'2.5px solid #F5B720':'2.5px dashed #D1D5DB',
+                background:uploaded?'linear-gradient(160deg,#FFFBF0,#FEF3C7)':'#F9FAFB',
+                display:'flex',flexDirection:'column',alignItems:'center',
+                justifyContent:'center',gap:12,cursor:'pointer',transition:'all .2s'}}>
+              {uploaded?(
+                <>
+                  <div style={{position:'relative'}}>
+                    <PetSVG size={130}/>
+                    <div style={{position:'absolute',bottom:0,right:0,width:28,height:28,
+                      borderRadius:'50%',background:'#10B981',display:'flex',
+                      alignItems:'center',justifyContent:'center',color:'white',
+                      fontWeight:900,fontSize:14}}>✓</div>
+                  </div>
+                  <span style={{fontSize:13,fontWeight:600,color:'#6B7280'}}>照片已上传</span>
+                </>
+              ):(
+                <>
+                  <div style={{width:60,height:60,borderRadius:16,
+                    background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
+                    display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>📷</div>
+                  <p style={{fontSize:13,fontWeight:600,color:'#6B7280',textAlign:'center'}}>
+                    拖拽照片到此处<br/><span style={{color:'#9CA3AF'}}>或点击上传</span>
+                  </p>
+                  <div style={{padding:'8px 20px',borderRadius:9999,background:Gold,
+                    color:'white',fontWeight:700,fontSize:13}}>选择照片</div>
+                </>
+              )}
+            </div>
+            {uploaded&&(
+              <div style={{background:'white',borderRadius:16,padding:16,
+                boxShadow:'0 2px 12px rgba(0,0,0,.07)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+                  <span style={{fontSize:14}}>✨</span>
+                  <span style={{fontSize:13,fontWeight:700,color:'#374151'}}>AI 识别结果</span>
+                </div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                  {tags.map(t=>(
+                    <div key={t.id} style={{display:'flex',alignItems:'center',gap:6,
+                      padding:'6px 12px',borderRadius:9999,background:t.bg,
+                      color:t.color,fontWeight:700,fontSize:13}}>
+                      {t.label}
+                      <button onClick={e=>{e.stopPropagation();setTags(prev=>prev.filter(x=>x.id!==t.id))}}
+                        style={{width:16,height:16,borderRadius:'50%',border:'none',
+                          background:`${t.color}22`,color:t.color,cursor:'pointer',
+                          fontWeight:900,fontSize:11,display:'flex',alignItems:'center',
+                          justifyContent:'center'}}>×</button>
+                    </div>
+                  ))}
+                  {tags.length===0&&<span style={{fontSize:12,color:'#9CA3AF',fontStyle:'italic'}}>已清除所有标签</span>}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step===2&&(
+          <div style={{display:'flex',flexDirection:'column',gap:18}}>
+            <div>
+              <h2 style={{fontSize:22,fontWeight:900,color:'#1A1A1A'}}>打造你的 IP</h2>
+              <p style={{fontSize:13,color:'#9CA3AF',marginTop:4}}>越详细，AI 生成效果越好</p>
+            </div>
+            <div>
+              <label style={{fontSize:13,fontWeight:700,color:'#374151',display:'block',marginBottom:8}}>
+                宠物昵称 <span style={{color:'#EF4444'}}>*</span>
+              </label>
+              <input value={name} onChange={e=>setName(e.target.value)} maxLength={12}
+                placeholder="给宠物起个响亮的名字..."
+                style={{width:'100%',padding:'14px 16px',borderRadius:14,fontSize:14,
+                  fontFamily:'inherit',fontWeight:600,color:'#1A1A1A',
+                  border:name.trim()?'2px solid #F5B720':'2px solid #E5E7EB',
+                  background:'white',outline:'none',
+                  boxShadow:name.trim()?'0 0 0 4px rgba(245,183,32,.12)':'none',
+                  transition:'all .2s'}}/>
+              <div style={{textAlign:'right',fontSize:11,color:'#9CA3AF',marginTop:4}}>{name.length}/12</div>
+            </div>
+            <div>
+              <label style={{fontSize:13,fontWeight:700,color:'#374151',display:'block',marginBottom:8}}>
+                性格特征 <span style={{fontWeight:400,color:'#9CA3AF'}}>（可多选）</span>
+              </label>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                {PERSONALITIES.map(p=>pillBtn(perso.includes(p),
+                  ()=>setPerso(prev=>prev.includes(p)?prev.filter(x=>x!==p):[...prev,p]),p))}
+              </div>
+            </div>
+            <div>
+              <label style={{fontSize:13,fontWeight:700,color:'#374151',display:'block',marginBottom:8}}>
+                主攻赛道 <span style={{fontWeight:400,color:'#9CA3AF'}}>（单选）</span>
+              </label>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                {TRACKS.map(t=>(
+                  <button key={t} onClick={()=>setTrack(t)}
+                    style={{display:'flex',alignItems:'center',gap:10,padding:'14px',
+                      borderRadius:14,border:track===t?'2px solid #F5B720':'2px solid #E5E7EB',
+                      background:track===t?'linear-gradient(135deg,#FEF3C7,#FDE68A)':'white',
+                      cursor:'pointer',boxShadow:track===t?'0 4px 14px rgba(245,183,32,.3)':'none',
+                      transition:'all .2s'}}>
+                    <span style={{fontSize:22}}>{TRACK_ICONS[t]}</span>
+                    <span style={{fontSize:14,fontWeight:700,color:track===t?'#D97706':'#374151'}}>{t}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step===3&&(
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:20}}>
+            <div style={{textAlign:'center'}}>
+              <h2 style={{fontSize:22,fontWeight:900,color:'#1A1A1A'}}>你的 IP 诞生了！</h2>
+              <p style={{fontSize:13,color:'#9CA3AF',marginTop:4}}>AI 已为你生成专属宠物 IP</p>
+            </div>
+            {/* IP Cover */}
+            <div style={{position:'relative',width:180,height:180,borderRadius:24,
+              background:'linear-gradient(145deg,#F5B720,#F09628)',
+              boxShadow:'0 12px 40px rgba(245,183,32,.4)',display:'flex',
+              alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
+              <div style={{position:'absolute',inset:0,background:
+                'radial-gradient(circle at 30% 30%,rgba(255,255,255,.3),transparent 60%)'}}/>
+              <PetSVG size={160}/>
+              <div style={{position:'absolute',bottom:10,left:0,right:0,textAlign:'center'}}>
+                <span style={{fontFamily:'Pacifico,cursive',fontSize:20,color:'white',
+                  fontStyle:'italic',textShadow:'0 2px 8px rgba(0,0,0,.3)'}}>
+                  {name||'Laoto'}
+                </span>
+              </div>
+              <div className="bounce" style={{position:'absolute',top:-8,right:-8,fontSize:22}}>✨</div>
+            </div>
+            {track&&(
+              <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 20px',
+                borderRadius:9999,background:Gold,color:'white',fontWeight:700,fontSize:13,
+                boxShadow:'0 4px 16px rgba(245,183,32,.4)'}}>
+                <span>{TRACK_ICONS[track]}</span>
+                <span>{track}赛道 推荐</span>
+              </div>
+            )}
+            <div style={{width:'100%',background:'white',borderRadius:16,padding:16,
+              boxShadow:'0 2px 12px rgba(0,0,0,.07)'}}>
+              {perso.length>0&&<div style={{display:'flex',gap:8,alignItems:'center',marginBottom:10}}>
+                <span style={{fontSize:12,fontWeight:700,color:'#9CA3AF',width:40}}>性格</span>
+                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                  {perso.map(p=><span key={p} style={{fontSize:11,padding:'2px 8px',borderRadius:9999,
+                    background:'#FEF3C7',color:'#D97706',fontWeight:700}}>{p}</span>)}
+                </div>
+              </div>}
+              <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:10}}>
+                <span style={{fontSize:12,fontWeight:700,color:'#9CA3AF',width:40}}>等级</span>
+                <span style={{fontSize:11,padding:'2px 10px',borderRadius:9999,
+                  background:'#F09628',color:'white',fontWeight:700}}>LV.1 新人</span>
+              </div>
+              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                <span style={{fontSize:12,fontWeight:700,color:'#9CA3AF',width:40}}>奖励</span>
+                <span style={{fontSize:12,color:'#374151',fontWeight:600}}>🎁 新手礼包 100 Token 已到账</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom buttons */}
+      <div style={{padding:'8px 24px 32px',display:'flex',gap:10,flexShrink:0}}>
+        {step>1&&(
+          <button onClick={back} style={{width:46,height:46,borderRadius:14,border:'none',
+            background:'#F3F4F6',color:'#6B7280',fontSize:18,cursor:'pointer',fontWeight:700}}>←</button>
+        )}
+        <button onClick={step<3?next:onDone} disabled={!canNext}
+          style={{flex:1,height:46,borderRadius:9999,border:'none',
+            background:canNext?Gold:'#E5E7EB',color:canNext?'white':'#9CA3AF',
+            fontWeight:700,fontSize:14,cursor:canNext?'pointer':'not-allowed',
+            boxShadow:canNext?'0 6px 20px rgba(245,183,32,.4)':'none',transition:'all .2s'}}>
+          {step===1?'下一步：填写信息':step===2?'下一步：预览 IP':'🐾 开始养成！'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════
+   PAGE 2: HOME
+═══════════════════════════════════════════ */
+const Home=({setPage})=>{
+  const [sheetOpen,setSheetOpen]=useState(false);
+  const MORE=[
+    {icon:'🤝',label:'联名活动'},{icon:'💛',label:'粉丝团'},
+    {icon:'🛍️',label:'周边商城'},{icon:'🎙️',label:'直播助手'},
+    {icon:'📊',label:'数据分析'},{icon:'🏆',label:'荣誉榜'},
+  ];
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden',
+      background:'linear-gradient(160deg,#F5B720 0%,#F09628 55%,#E8871A 100%)'}}>
+      {/* Top bar */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+        padding:'52px 20px 8px',flexShrink:0}}>
+        <button style={{width:40,height:40,borderRadius:12,border:'none',
+          background:'rgba(255,255,255,.22)',cursor:'pointer',display:'flex',
+          alignItems:'center',justifyContent:'center'}}>
+          <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+            <rect y="0" width="20" height="2.5" rx="1.25" fill="white"/>
+            <rect y="5.75" width="14" height="2.5" rx="1.25" fill="white"/>
+            <rect y="11.5" width="20" height="2.5" rx="1.25" fill="white"/>
+          </svg>
+        </button>
+        {/* Followers center */}
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{display:'flex'}}>
+            {[['📕','#FF2442'],['🎵','#1A1A1A'],['📸','#E1306C']].map(([e,c],i)=>(
+              <div key={i} style={{width:30,height:30,borderRadius:'50%',background:c,
+                border:'2px solid white',marginLeft:i>0?-9:0,zIndex:3-i,position:'relative',
+                display:'flex',alignItems:'center',justifyContent:'center',fontSize:13}}>{e}</div>
+            ))}
+          </div>
+          <div>
+            <p style={{color:'white',fontWeight:900,fontSize:18,lineHeight:1}}>5.4W</p>
+            <p style={{color:'rgba(255,255,255,.75)',fontSize:11,marginTop:2}}>全网粉丝</p>
+          </div>
+        </div>
+        <button style={{width:40,height:40,borderRadius:12,border:'none',
+          background:'rgba(255,255,255,.22)',cursor:'pointer',fontSize:18}}>⚙️</button>
+      </div>
+
+      {/* Floating sidebar */}
+      <div style={{position:'absolute',right:12,top:110,display:'flex',flexDirection:'column',gap:8,zIndex:20}}>
+        {[['🛍️','商城'],['⭐','活动']].map(([icon,label])=>(
+          <button key={label} style={{position:'relative',background:'rgba(255,255,255,.92)',
+            border:'none',borderRadius:14,padding:'8px 6px',cursor:'pointer',
+            boxShadow:'0 4px 12px rgba(0,0,0,.12)',minWidth:44,display:'flex',
+            flexDirection:'column',alignItems:'center',gap:2}}>
+            <span style={{fontSize:18}}>{icon}</span>
+            <span style={{fontSize:10,fontWeight:700,color:'#374151'}}>{label}</span>
+            <div style={{position:'absolute',top:-4,right:-4,width:14,height:14,
+              borderRadius:'50%',background:'#EF4444',border:'2px solid white'}}/>
+          </button>
+        ))}
+      </div>
+
+      {/* Speech bubble */}
+      <div style={{display:'flex',justifyContent:'center',padding:'0 40px 4px',flexShrink:0}}>
+        <div style={{position:'relative',padding:'10px 20px',borderRadius:9999,
+          background:'rgba(255,255,255,.92)',fontSize:13,fontWeight:700,color:'#374151',
+          boxShadow:'0 4px 16px rgba(0,0,0,.1)'}}>
+          可以摸摸我吗～
+          <div style={{position:'absolute',left:'50%',bottom:-8,transform:'translateX(-50%)',
+            width:0,height:0,borderLeft:'7px solid transparent',
+            borderRight:'7px solid transparent',borderTop:'9px solid rgba(255,255,255,.92)'}}/>
+        </div>
+      </div>
+
+      {/* Pet hero */}
+      <div style={{position:'relative',display:'flex',justifyContent:'center',flexShrink:0}}>
+        <button onClick={()=>{}} style={{position:'absolute',left:12,top:'50%',
+          transform:'translateY(-50%)',width:36,height:36,borderRadius:'50%',border:'none',
+          background:'rgba(255,255,255,.28)',color:'white',fontSize:16,cursor:'pointer',
+          display:'flex',alignItems:'center',justifyContent:'center',zIndex:10}}>‹</button>
+        <div className="pulse-ring" style={{width:230,height:230,borderRadius:'50%',
+          background:'radial-gradient(circle,rgba(255,255,255,.18),rgba(255,255,255,.04) 70%,transparent)',
+          display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{marginTop:20}}><PetSVG size={210}/></div>
+        </div>
+        <button onClick={()=>{}} style={{position:'absolute',right:12,top:'50%',
+          transform:'translateY(-50%)',width:36,height:36,borderRadius:'50%',border:'none',
+          background:'rgba(255,255,255,.28)',color:'white',fontSize:16,cursor:'pointer',
+          display:'flex',alignItems:'center',justifyContent:'center',zIndex:10}}>›</button>
+      </div>
+
+      {/* Name + XP */}
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',
+        padding:'0 32px',marginTop:-8,flexShrink:0}}>
+        <h1 style={{fontFamily:'Pacifico,cursive',fontStyle:'italic',fontSize:34,
+          color:'white',textShadow:'0 3px 12px rgba(0,0,0,.2)'}}>Laoto</h1>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginTop:8,width:'100%',maxWidth:260}}>
+          <div style={{padding:'4px 12px',borderRadius:9999,background:'#F09628',
+            border:'2px solid rgba(255,255,255,.5)',color:'white',fontWeight:900,fontSize:12,
+            boxShadow:'0 2px 8px rgba(0,0,0,.15)',flexShrink:0}}>LV.12</div>
+          <div style={{flex:1}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+              <span style={{fontSize:11,color:'rgba(255,255,255,.8)',fontWeight:600}}>458/1200</span>
+            </div>
+            <div style={{height:10,borderRadius:5,background:'rgba(255,255,255,.25)',overflow:'hidden'}}>
+              <div className="xp-bar" style={{width:'38%',height:'100%',borderRadius:5}}/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Shortcut cards */}
+      <div style={{display:'flex',gap:10,padding:'12px 14px 0',flexShrink:0}}>
+        {[
+          {icon:'📋',label:'宝宝资料',count:null,big:false},
+          {icon:'📸',label:'明星照相馆',count:156,big:true},
+          {icon:'🗺️',label:'宝宝足迹',count:null,big:false},
+        ].map((c,i)=>(
+          <button key={i} style={{flex:1,display:'flex',flexDirection:'column',
+            alignItems:'center',gap:6,padding:'12px 4px',borderRadius:18,border:'none',cursor:'pointer',
+            background:c.big?'rgba(255,255,255,.38)':'rgba(255,255,255,.22)',
+            backdropFilter:'blur(12px)',transform:c.big?'translateY(-4px)':'none',
+            boxShadow:c.big?'0 6px 20px rgba(0,0,0,.15)':'0 2px 8px rgba(0,0,0,.06)',
+            transition:'all .2s'}}>
+            <span style={{fontSize:22}}>{c.icon}</span>
+            <span style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.95)',textAlign:'center',lineHeight:1.2}}>
+              {c.label}
+            </span>
+            {c.count!==null&&<span style={{fontSize:11,fontWeight:900,
+              background:'rgba(255,255,255,.3)',color:'white',
+              padding:'1px 8px',borderRadius:9999}}>{c.count}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* More button */}
+      <div style={{display:'flex',justifyContent:'center',marginTop:12,flexShrink:0}}>
+        <button onClick={()=>setSheetOpen(true)}
+          style={{display:'flex',alignItems:'center',gap:6,padding:'8px 28px',
+            borderRadius:9999,border:'1.5px solid rgba(255,255,255,.4)',
+            background:'rgba(255,255,255,.2)',color:'white',fontWeight:700,
+            fontSize:13,cursor:'pointer'}}>
+          更多玩法 ▲
+        </button>
+      </div>
+
+      <div style={{flex:1}}/>
+      {/* Nav */}
+      <BottomNav page="home" setPage={setPage}/>
+
+      {/* Sheet */}
+      <BottomSheet open={sheetOpen} onClose={()=>setSheetOpen(false)} title="更多玩法">
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,padding:20}}>
+          {MORE.map(f=>(
+            <button key={f.label} style={{display:'flex',flexDirection:'column',alignItems:'center',
+              gap:8,padding:12,borderRadius:16,background:'#F9FAFB',border:'none',cursor:'pointer'}}>
+              <div style={{width:46,height:46,borderRadius:14,
+                background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
+                display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>{f.icon}</div>
+              <span style={{fontSize:11,fontWeight:700,color:'#374151',textAlign:'center'}}>{f.label}</span>
+            </button>
+          ))}
+        </div>
+        <div style={{height:16}}/>
+      </BottomSheet>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════
+   PAGE 3: CREATION
+═══════════════════════════════════════════ */
+const Creation=({setPage})=>{
+  const [promo,setPromo]=useState(true);
+  const [flow,setFlow]=useState(null); // null|upload|template|loading|result
+  const [tpl,setTpl]=useState(null);
+  const [pct,setPct]=useState(0);
+  const [toast,setToast]=useState({v:false,m:''});
+  const [fileUploaded,setFileUploaded]=useState(false);
+  const timerRef=useRef();
+
+  const startLoad=()=>{
+    setFlow('loading');setPct(0);let p=0;
+    timerRef.current=setInterval(()=>{
+      p+=Math.random()*18+6;
+      if(p>=100){p=100;clearInterval(timerRef.current);
+        setTimeout(()=>setFlow('result'),300);}
+      setPct(Math.min(p,100));
+    },180);
+  };
+  useEffect(()=>()=>clearInterval(timerRef.current),[]);
+
+  const TOOLS=[{i:'⊞',l:'改尺寸'},{i:'✦',l:'AI修图'},{i:'🔄',l:'图像修复'},{i:'✂️',l:'消除背景'}];
+  const CARDS=[
+    {id:'ai-images',label:'AI Images',sub:'生成宠物高清图',badge:'New',bc:'#10B981',grad:['#BFDBFE','#93C5FD'],e:'🖼️'},
+    {id:'ai-videos',label:'AI Videos',sub:'一键生成短视频',badge:'-20 Token',bc:'#F59E0B',grad:['#FDE68A','#FCA5A5'],e:'🎬'},
+    {id:'ai-emojis',label:'AI Emojis',sub:'生成表情包系列',badge:'New',bc:'#10B981',grad:['#BBF7D0','#6EE7B7'],e:'😄'},
+    {id:'ai-related',label:'AI Related',sub:'周边商品生成',badge:'-10 Token',bc:'#F59E0B',grad:['#FDE68A','#F9A8D4'],e:'🎁'},
+  ];
+  const TPLS=[
+    {id:'royal',label:'皇家风',e:'👑',bg:'#FEF3C7'},
+    {id:'cute',label:'萌系',e:'🌸',bg:'#FCE7F3'},
+    {id:'cool',label:'酷帅',e:'😎',bg:'#DBEAFE'},
+    {id:'fantasy',label:'梦幻',e:'✨',bg:'#EDE9FE'},
+  ];
+  const tplColors={royal:['#7C3AED','#5B21B6'],cute:['#EC4899','#BE185D'],
+    cool:['#2563EB','#1D4ED8'],fantasy:['#8B5CF6','#6D28D9']};
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'white',overflow:'hidden'}}>
+      <div className="no-scroll" style={{flex:1,overflowY:'auto',paddingBottom:72}}>
+        {/* Hero */}
+        <div style={{position:'relative',height:210,overflow:'hidden',flexShrink:0}}>
+          <div style={{position:'absolute',inset:0,background:'linear-gradient(160deg,#F5B720,#F09628)'}}/>
+          <div style={{position:'absolute',right:20,bottom:0,opacity:.6}}>
+            <PetSVG size={180}/>
+          </div>
+          <div style={{position:'absolute',inset:0,background:
+            'linear-gradient(160deg,rgba(245,183,32,.85),rgba(240,150,40,.7))'}}/>
+          <div style={{position:'absolute',inset:0,padding:'52px 24px 20px',
+            display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
+            <p style={{color:'white',fontWeight:900,fontSize:20,lineHeight:1.25,
+              textTransform:'uppercase',letterSpacing:.5}}>
+              THERE'S NO<br/>SUPERSTAR I<br/>CAN'T CREATE!
+            </p>
+            <div style={{display:'flex',gap:6,marginTop:10}}>
+              {[1,0,0].map((a,i)=><div key={i} style={{width:6,height:6,borderRadius:3,
+                background:a?'white':'rgba(255,255,255,.4)'}}/>)}
+            </div>
+          </div>
+        </div>
+
+        {/* VIP Promo */}
+        {promo&&(
+          <div style={{margin:'12px 16px 0',padding:'12px 14px',borderRadius:16,
+            background:'linear-gradient(135deg,#7C3AED,#5B21B6)',display:'flex',
+            alignItems:'center',gap:10}}>
+            <div style={{width:38,height:38,borderRadius:12,background:'rgba(255,255,255,.2)',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontSize:18,flexShrink:0}}>✨</div>
+            <div style={{flex:1,minWidth:0}}>
+              <p style={{color:'white',fontWeight:700,fontSize:13,lineHeight:1.2}}>AI 生成内容 · 首月 ¥9</p>
+              <p style={{color:'rgba(255,255,255,.6)',fontSize:11,marginTop:2}}>一键生成直播文案、图片、排版</p>
+            </div>
+            <button style={{padding:'6px 12px',borderRadius:9999,
+              background:'rgba(255,255,255,.25)',border:'1px solid rgba(255,255,255,.4)',
+              color:'white',fontWeight:700,fontSize:11,cursor:'pointer',flexShrink:0}}>Try Now</button>
+            <button onClick={()=>setPromo(false)} style={{width:22,height:22,borderRadius:'50%',
+              background:'rgba(255,255,255,.12)',border:'none',color:'rgba(255,255,255,.6)',
+              cursor:'pointer',flexShrink:0,fontSize:11}}>✕</button>
+          </div>
+        )}
+
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+          padding:'16px 20px 8px'}}>
+          <h2 style={{fontSize:15,fontWeight:900,color:'#1A1A1A'}}>AI 创作工坊</h2>
+          <button style={{display:'flex',alignItems:'center',gap:6,padding:'6px 12px',
+            borderRadius:9999,background:'#FEF3C7',color:'#D97706',border:'none',
+            fontWeight:700,fontSize:11,cursor:'pointer'}}>🪙 赚积分</button>
+        </div>
+
+        {/* AI Flow */}
+        {flow&&(
+          <div style={{padding:'0 16px'}}>
+            {flow!=='loading'&&(
+              <button onClick={()=>{setFlow(null);setTpl(null);setFileUploaded(false)}}
+                style={{display:'flex',alignItems:'center',gap:6,fontSize:13,fontWeight:700,
+                  color:'#6B7280',background:'none',border:'none',cursor:'pointer',
+                  marginBottom:16,padding:0}}>
+                ← 返回
+              </button>
+            )}
+
+            {flow==='upload'&&(
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                <h3 style={{fontSize:17,fontWeight:900,color:'#1A1A1A'}}>上传宠物照片</h3>
+                <div onClick={()=>setFileUploaded(true)} style={{height:160,borderRadius:16,
+                  border:fileUploaded?'2px solid #F5B720':'2px dashed #D1D5DB',
+                  background:fileUploaded?'#FFFBF0':'#F9FAFB',display:'flex',
+                  flexDirection:'column',alignItems:'center',justifyContent:'center',
+                  gap:10,cursor:'pointer'}}>
+                  {fileUploaded?<><span style={{fontSize:40}}>✅</span>
+                    <p style={{fontSize:13,fontWeight:600,color:'#6B7280'}}>照片已上传</p></>
+                    :<><span style={{fontSize:36}}>📷</span>
+                    <p style={{fontSize:13,color:'#9CA3AF'}}>点击上传照片</p></>}
+                </div>
+                <button onClick={()=>fileUploaded&&setFlow('template')} disabled={!fileUploaded}
+                  style={{width:'100%',padding:'14px',borderRadius:9999,border:'none',
+                    background:fileUploaded?'linear-gradient(135deg,#F5B720,#F09628)':'#E5E7EB',
+                    color:fileUploaded?'white':'#9CA3AF',fontWeight:700,fontSize:14,
+                    cursor:fileUploaded?'pointer':'not-allowed'}}>
+                  下一步：选择风格
+                </button>
+              </div>
+            )}
+
+            {flow==='template'&&(
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                <h3 style={{fontSize:17,fontWeight:900,color:'#1A1A1A'}}>选择生成风格</h3>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                  {TPLS.map(t=>(
+                    <button key={t.id} onClick={()=>setTpl(t.id)}
+                      style={{display:'flex',flexDirection:'column',alignItems:'center',
+                        gap:8,padding:'18px 10px',borderRadius:16,cursor:'pointer',
+                        border:tpl===t.id?'2px solid #F5B720':'2px solid #E5E7EB',
+                        background:tpl===t.id?t.bg:'#F9FAFB',
+                        boxShadow:tpl===t.id?'0 4px 14px rgba(245,183,32,.25)':'none',
+                        transition:'all .2s'}}>
+                      <span style={{fontSize:30}}>{t.e}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:'#374151'}}>{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <button onClick={()=>tpl&&startLoad()} disabled={!tpl}
+                  style={{width:'100%',padding:'14px',borderRadius:9999,border:'none',
+                    background:tpl?'linear-gradient(135deg,#F5B720,#F09628)':'#E5E7EB',
+                    color:tpl?'white':'#9CA3AF',fontWeight:700,fontSize:14,
+                    cursor:tpl?'pointer':'not-allowed'}}>
+                  ✨ 开始 AI 生成
+                </button>
+              </div>
+            )}
+
+            {flow==='loading'&&(
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:24,paddingTop:32}}>
+                <div className="spin" style={{width:80,height:80,borderRadius:'50%',
+                  background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
+                  display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>✨</div>
+                <div style={{width:'100%'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',
+                    marginBottom:8,fontSize:13,fontWeight:700}}>
+                    <span style={{color:'#6B7280'}}>AI 正在创作...</span>
+                    <span style={{color:'#F09628'}}>{Math.round(pct)}%</span>
+                  </div>
+                  <div style={{height:10,borderRadius:5,background:'#F3F4F6',overflow:'hidden'}}>
+                    <div style={{width:`${pct}%`,height:'100%',borderRadius:5,
+                      background:'linear-gradient(90deg,#F5B720,#F09628)',transition:'width .15s'}}/>
+                  </div>
+                  <p style={{textAlign:'center',fontSize:12,color:'#9CA3AF',marginTop:8}}>
+                    正在生成高清宠物写真，请稍候...
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {flow==='result'&&(
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <h3 style={{fontSize:17,fontWeight:900,color:'#1A1A1A'}}>生成完成！</h3>
+                  <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:9999,
+                    background:'#D1FAE5',color:'#059669'}}>✓ 高清</span>
+                </div>
+                {/* Generated image */}
+                <div style={{height:240,borderRadius:18,overflow:'hidden',position:'relative',
+                  background:`linear-gradient(145deg,${(tplColors[tpl]||['#7C3AED','#5B21B6'])[0]},${(tplColors[tpl]||['#7C3AED','#5B21B6'])[1]})`,
+                  display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:8}}>
+                  <div style={{position:'absolute',inset:0,background:
+                    'radial-gradient(circle at 30% 30%,rgba(255,255,255,.2),transparent 60%)'}}/>
+                  <span style={{fontSize:60,zIndex:1}}>
+                    {TPLS.find(t=>t.id===tpl)?.e||'✨'}
+                  </span>
+                  <PetSVG size={120}/>
+                  <div style={{position:'absolute',top:10,right:10}}>
+                    <span style={{fontSize:11,fontWeight:700,padding:'3px 8px',borderRadius:9999,
+                      background:'rgba(0,0,0,.25)',color:'white'}}>🐾 Pet-Pop</span>
+                  </div>
+                </div>
+                <div style={{display:'flex',gap:10}}>
+                  <button style={{flex:1,padding:'12px',borderRadius:9999,border:'2px solid #E5E7EB',
+                    background:'white',fontWeight:700,fontSize:13,cursor:'pointer',color:'#374151'}}>
+                    💾 保存
+                  </button>
+                  <button onClick={()=>{
+                    setToast({v:true,m:'已发布到广场'});
+                    setTimeout(()=>{setFlow(null);setTpl(null);setFileUploaded(false);},2800);
+                  }} style={{flex:2,padding:'12px',borderRadius:9999,border:'none',
+                    background:'linear-gradient(135deg,#F5B720,#F09628)',color:'white',
+                    fontWeight:700,fontSize:13,cursor:'pointer',
+                    boxShadow:'0 6px 20px rgba(245,183,32,.4)'}}>
+                    🚀 一键发布
+                  </button>
+                </div>
+                <button onClick={()=>{setTpl(null);setFlow('template')}}
+                  style={{padding:'10px',borderRadius:9999,border:'none',background:'#F3F4F6',
+                    color:'#6B7280',fontWeight:600,fontSize:13,cursor:'pointer'}}>
+                  重新生成
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Main grid */}
+        {!flow&&(
+          <>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,padding:'0 16px'}}>
+              {CARDS.map(c=>(
+                <button key={c.id} onClick={()=>c.id==='ai-images'&&setFlow('upload')}
+                  style={{position:'relative',display:'flex',flexDirection:'column',
+                    justifyContent:'space-between',padding:16,borderRadius:18,border:'none',
+                    background:`linear-gradient(145deg,${c.grad[0]},${c.grad[1]})`,
+                    cursor:'pointer',minHeight:130,textAlign:'left',transition:'transform .15s'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                    <span style={{fontSize:28}}>{c.e}</span>
+                    <span style={{fontSize:10,fontWeight:700,padding:'3px 7px',borderRadius:9999,
+                      background:c.bc,color:'white'}}>{c.badge}</span>
+                  </div>
+                  <div>
+                    <p style={{fontWeight:900,fontSize:14,color:'#1A1A1A'}}>{c.label}</p>
+                    <p style={{fontSize:11,color:'#6B7280',marginTop:2}}>{c.sub}</p>
+                  </div>
+                  <div style={{position:'absolute',bottom:10,right:10,width:26,height:26,
+                    borderRadius:'50%',background:'rgba(255,255,255,.6)',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    fontSize:12,color:'#374151'}}>›</div>
+                </button>
+              ))}
+            </div>
+            {/* Tools */}
+            <div style={{padding:'16px 16px 0'}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
+                <span style={{fontSize:14,fontWeight:900,color:'#1A1A1A'}}>Tools</span>
+                <button style={{fontSize:12,fontWeight:700,color:'#F09628',border:'none',
+                  background:'none',cursor:'pointer'}}>More →</button>
+              </div>
+              <div style={{display:'flex',gap:8}}>
+                {TOOLS.map(t=>(
+                  <button key={t.i} style={{flex:1,display:'flex',flexDirection:'column',
+                    alignItems:'center',gap:6,padding:'12px 4px',borderRadius:14,
+                    border:'none',background:'#F3F4F6',cursor:'pointer'}}>
+                    <span style={{fontSize:18}}>{t.i}</span>
+                    <span style={{fontSize:10,fontWeight:700,color:'#6B7280',textAlign:'center',lineHeight:1.2}}>{t.l}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      <BottomNav page="creation" setPage={setPage}/>
+      <Toast msg={toast.m} visible={toast.v} onHide={()=>setToast({...toast,v:false})}/>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════
+   PAGE 4: SQUARE
+═══════════════════════════════════════════ */
+const POSTS=[
+  {id:1,name:'Boba',owner:'@boba_cat',likes:2341,track:'颜值',bg:'#FDE68A',e:'🐱',tall:true},
+  {id:2,name:'Mochi',owner:'@mochi_shiba',likes:8820,track:'才艺',bg:'#BFDBFE',e:'🐕',tall:false},
+  {id:3,name:'Dumpling',owner:'@dump_bunny',likes:1563,track:'吃播',bg:'#BBF7D0',e:'🐰',tall:false},
+  {id:4,name:'Coco',owner:'@coco_persian',likes:5019,track:'颜值',bg:'#FDE68A',e:'🐈',tall:true},
+  {id:5,name:'Noodle',owner:'@noodle_corgi',likes:3377,track:'才艺',bg:'#F9A8D4',e:'🐶',tall:false},
+  {id:6,name:'Taro',owner:'@taro_hamster',likes:991,track:'故事',bg:'#DDD6FE',e:'🐹',tall:true},
+];
+const Square=({setPage})=>{
+  const [tab,setTab]=useState('全部');
+  const filtered=POSTS.filter(p=>tab==='全部'||p.track===tab);
+  const col1=filtered.filter((_,i)=>i%2===0);
+  const col2=filtered.filter((_,i)=>i%2===1);
+  const Card=({p})=>(
+    <div style={{borderRadius:16,overflow:'hidden',position:'relative',
+      height:p.tall?210:160,marginBottom:0}}>
+      <div style={{position:'absolute',inset:0,background:`linear-gradient(145deg,${p.bg},${p.bg}cc)`,
+        display:'flex',alignItems:'center',justifyContent:'center',fontSize:p.tall?70:54}}>{p.e}</div>
+      <div style={{position:'absolute',inset:0,background:
+        'linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.55))'}}/>
+      <div style={{position:'absolute',top:8,left:8}}>
+        <span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:9999,
+          background:'rgba(0,0,0,.3)',color:'white'}}>{p.track}</span>
+      </div>
+      <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'0 10px 10px'}}>
+        <p style={{color:'white',fontWeight:700,fontSize:13}}>{p.name}</p>
+        <p style={{color:'rgba(255,255,255,.7)',fontSize:11}}>{p.owner}</p>
+        <div style={{display:'flex',alignItems:'center',gap:4,marginTop:3}}>
+          <span style={{fontSize:11}}>❤️</span>
+          <span style={{color:'rgba(255,255,255,.9)',fontSize:11,fontWeight:700}}>
+            {p.likes>=1000?`${(p.likes/1000).toFixed(1)}K`:p.likes}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'#F9FAFB',overflow:'hidden'}}>
+      <div style={{background:'white',padding:'52px 16px 0',
+        boxShadow:'0 1px 0 rgba(0,0,0,.06)',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+          <h1 style={{fontSize:20,fontWeight:900,color:'#1A1A1A'}}>宠物广场</h1>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 12px',borderRadius:14,
+          background:'#F3F4F6',marginBottom:12}}>
+          <span style={{fontSize:14,color:'#9CA3AF'}}>🔍</span>
+          <span style={{fontSize:13,color:'#9CA3AF',fontWeight:500}}>搜索宠物 IP、赛道、标签...</span>
+        </div>
+        <div className="no-scroll" style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:12}}>
+          {['全部','吃播','颜值','才艺','故事'].map(t=>(
+            <button key={t} onClick={()=>setTab(t)}
+              style={{flexShrink:0,padding:'6px 16px',borderRadius:9999,border:'none',
+                fontWeight:700,fontSize:13,cursor:'pointer',
+                background:tab===t?'linear-gradient(135deg,#F5B720,#F09628)':'#F3F4F6',
+                color:tab===t?'white':'#6B7280',
+                boxShadow:tab===t?'0 3px 10px rgba(245,183,32,.35)':'none'}}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="no-scroll" style={{flex:1,overflowY:'auto',padding:12,paddingBottom:80}}>
+        <div style={{display:'flex',gap:12}}>
+          <div style={{flex:1,display:'flex',flexDirection:'column',gap:12}}>
+            {col1.map(p=><Card key={p.id} p={p}/>)}
+          </div>
+          <div style={{flex:1,display:'flex',flexDirection:'column',gap:12,marginTop:24}}>
+            {col2.map(p=><Card key={p.id} p={p}/>)}
+          </div>
+        </div>
+      </div>
+      {/* FAB */}
+      <button style={{position:'absolute',right:16,bottom:76,width:50,height:50,borderRadius:'50%',
+        border:'none',background:'linear-gradient(135deg,#F5B720,#F09628)',color:'white',
+        fontSize:24,cursor:'pointer',boxShadow:'0 6px 20px rgba(245,183,32,.5)',
+        display:'flex',alignItems:'center',justifyContent:'center',zIndex:25,fontWeight:300}}>+</button>
+      <BottomNav page="square" setPage={setPage}/>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════
+   PAGE 5: BUSINESS
+═══════════════════════════════════════════ */
+const Countdown=({deadline})=>{
+  const [tl,setTl]=useState({d:0,h:0,m:0,s:0});
+  useEffect(()=>{
+    const calc=()=>{
+      const diff=Math.max(new Date(deadline)-Date.now(),0);
+      setTl({d:Math.floor(diff/86400000),h:Math.floor(diff%86400000/3600000),
+        m:Math.floor(diff%3600000/60000),s:Math.floor(diff%60000/1000)});
+    };
+    calc();const iv=setInterval(calc,1000);return()=>clearInterval(iv);
+  },[]);
+  const p=n=>String(n).padStart(2,'0');
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:3}}>
+      {[[p(tl.d),'天'],[p(tl.h),'时'],[p(tl.m),'分'],[p(tl.s),'秒']].map(([v,l],i)=>(
+        <React.Fragment key={i}>
+          <div style={{display:'flex',alignItems:'center',gap:2}}>
+            <span style={{fontWeight:900,fontSize:11,color:'white',background:'#1A1A1A',
+              padding:'2px 5px',borderRadius:5,minWidth:22,textAlign:'center'}}>{v}</span>
+            <span style={{fontSize:10,color:'#6B7280',fontWeight:600}}>{l}</span>
+          </div>
+          {i<3&&<span style={{color:'#D1D5DB',fontSize:11,fontWeight:700}}>:</span>}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
+const Business=({setPage})=>{
+  const [tab,setTab]=useState('活动');
+  const [joined,setJoined]=useState([]);
+  const ACTIVITIES=[
+    {id:1,title:'宠物颜值大赛 · 春季赛',desc:'上传宠物最靓的照片，赢取 500 Token + 官方认证徽章',
+      deadline:'2026-03-25 23:59',prize:'500 Token',joined:2341,tag:'颜值赛道',tc:'#F59E0B'},
+    {id:2,title:'吃播挑战赛 · 第三期',desc:'拍下宠物最萌的进食瞬间，TOP10 可获精选推荐位',
+      deadline:'2026-03-28 23:59',prize:'推荐位',joined:1829,tag:'吃播赛道',tc:'#10B981'},
+  ];
+  const VIP=[
+    {name:'月度会员',price:'¥29',period:'/ 月',feats:['每月 500 Token','AI 生图 ×30次/月','AI 视频 ×5次/月','专属客服'],hl:false,cta:'立即订阅'},
+    {name:'年度会员',price:'¥199',period:'/ 年',badge:'省 ¥149',feats:['每月 1500 Token','AI 生图 无限次','AI 视频 ×30次/月','专属运营顾问','优先审核通道'],hl:true,cta:'立即升级'},
+  ];
+  const TABS=['活动','周边商城','VIP服务','签约合作'];
+  const ComingSoon=()=>(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',
+      justifyContent:'center',padding:'60px 20px',gap:16}}>
+      <div style={{width:80,height:80,borderRadius:24,
+        background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
+        display:'flex',alignItems:'center',justifyContent:'center',fontSize:36}}>🐾</div>
+      <div style={{textAlign:'center'}}>
+        <p style={{fontWeight:700,fontSize:15,color:'#374151'}}>建设中，敬请期待</p>
+        <p style={{fontSize:13,color:'#9CA3AF',marginTop:4}}>更多精彩功能即将上线</p>
+      </div>
+    </div>
+  );
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'#F9FAFB',overflow:'hidden'}}>
+      <div className="no-scroll" style={{flex:1,overflowY:'auto',paddingBottom:72}}>
+        <div style={{background:'white',padding:'52px 20px 0'}}>
+          <h1 style={{fontSize:20,fontWeight:900,color:'#1A1A1A',marginBottom:16}}>商务中心</h1>
+          {/* Achievement card */}
+          <div style={{borderRadius:18,overflow:'hidden',marginBottom:0,
+            background:'linear-gradient(135deg,#F5B720,#F09628)',padding:18}}>
+            <div style={{display:'flex',alignItems:'center',gap:14}}>
+              <div style={{width:52,height:52,borderRadius:16,
+                background:'rgba(255,255,255,.25)',border:'2px solid rgba(255,255,255,.3)',
+                display:'flex',alignItems:'center',justifyContent:'center',fontSize:26}}>🐾</div>
+              <div style={{flex:1}}>
+                <p style={{color:'white',fontWeight:900,fontSize:15}}>Laoto</p>
+                <div style={{display:'flex',alignItems:'center',gap:12,marginTop:6}}>
+                  {[['5.4W','粉丝'],['156','内容']].map(([v,l])=>(
+                    <React.Fragment key={l}>
+                      <div style={{textAlign:'center'}}>
+                        <p style={{color:'white',fontWeight:900,fontSize:17,lineHeight:1}}>{v}</p>
+                        <p style={{color:'rgba(255,255,255,.7)',fontSize:11,marginTop:2}}>{l}</p>
+                      </div>
+                      <div style={{width:1,height:30,background:'rgba(255,255,255,.3)'}}/>
+                    </React.Fragment>
+                  ))}
+                  <div style={{padding:'4px 10px',borderRadius:9999,
+                    background:'rgba(255,255,255,.25)',display:'flex',alignItems:'center',gap:4}}>
+                    <span style={{color:'white',fontSize:11}}>✓</span>
+                    <span style={{color:'white',fontSize:11,fontWeight:700}}>颜值赛道</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Tabs */}
+          <div style={{display:'flex',marginTop:16}}>
+            {TABS.map(t=>{
+              const active=tab===t;const locked=t==='签约合作';
+              return(
+                <button key={t} onClick={()=>!locked&&setTab(t)}
+                  style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',
+                    gap:6,paddingBottom:10,paddingTop:6,border:'none',background:'none',
+                    cursor:locked?'not-allowed':'pointer',opacity:locked?.4:1}}>
+                  <div style={{display:'flex',alignItems:'center',gap:3}}>
+                    {locked&&<span style={{fontSize:10}}>🔒</span>}
+                    <span style={{fontSize:13,fontWeight:700,
+                      color:active?'#F09628':'#6B7280'}}>{t}</span>
+                  </div>
+                  <div style={{height:2.5,borderRadius:2,transition:'all .2s',
+                    width:active?'60%':0,
+                    background:'linear-gradient(90deg,#F5B720,#F09628)'}}/>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{padding:16}}>
+          {tab==='活动'&&ACTIVITIES.map(act=>{
+            const done=joined.includes(act.id);
+            return(
+              <div key={act.id} style={{borderRadius:18,overflow:'hidden',
+                background:'white',boxShadow:'0 2px 14px rgba(0,0,0,.07)',marginBottom:14}}>
+                <div style={{padding:'10px 14px',display:'flex',alignItems:'center',
+                  justifyContent:'space-between',
+                  background:'linear-gradient(135deg,#FEF3C7,#FDE68A)'}}>
+                  <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:9999,
+                    background:act.tc,color:'white'}}>{act.tag}</span>
+                  <div style={{display:'flex',alignItems:'center',gap:6}}>
+                    <span style={{fontSize:11,color:'#6B7280',fontWeight:600}}>截止</span>
+                    <Countdown deadline={act.deadline}/>
+                  </div>
+                </div>
+                <div style={{padding:16}}>
+                  <h3 style={{fontSize:15,fontWeight:900,color:'#1A1A1A',marginBottom:6}}>{act.title}</h3>
+                  <p style={{fontSize:13,color:'#6B7280',lineHeight:1.5,marginBottom:12}}>{act.desc}</p>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                    <div style={{display:'flex',flexDirection:'column',gap:3}}>
+                      <span style={{fontSize:12,color:'#9CA3AF'}}>
+                        🏆 奖励：<b style={{color:'#374151'}}>{act.prize}</b>
+                      </span>
+                      <span style={{fontSize:11,color:'#9CA3AF'}}>👥 {act.joined.toLocaleString()} 人已报名</span>
+                    </div>
+                    <button onClick={()=>!done&&setJoined(p=>[...p,act.id])}
+                      style={{padding:'8px 16px',borderRadius:9999,border:'none',
+                        fontWeight:700,fontSize:12,cursor:done?'default':'pointer',
+                        background:done?'#10B981':'linear-gradient(135deg,#F5B720,#F09628)',
+                        color:'white',boxShadow:done?'none':'0 3px 10px rgba(245,183,32,.35)'}}>
+                      {done?'✓ 已报名':'立即报名'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {tab==='周边商城'&&<ComingSoon/>}
+          {tab==='VIP服务'&&(
+            <div style={{display:'flex',flexDirection:'column',gap:14}}>
+              <p style={{fontSize:13,color:'#9CA3AF',marginBottom:4}}>选择适合你的 VIP 方案</p>
+              {VIP.map(plan=>(
+                <div key={plan.name} style={{borderRadius:18,padding:20,position:'relative',
+                  background:plan.hl?'linear-gradient(135deg,#1A1A1A,#374151)':'white',
+                  border:plan.hl?'none':'2px solid #E5E7EB',
+                  boxShadow:plan.hl?'0 8px 32px rgba(0,0,0,.18)':'0 2px 10px rgba(0,0,0,.05)'}}>
+                  {plan.badge&&<div style={{position:'absolute',top:16,right:16,
+                    padding:'3px 10px',borderRadius:9999,
+                    background:'linear-gradient(135deg,#F5B720,#F09628)',
+                    color:'white',fontSize:11,fontWeight:700}}>{plan.badge}</div>}
+                  <p style={{fontSize:12,fontWeight:600,marginBottom:4,
+                    color:plan.hl?'rgba(255,255,255,.55)':'#9CA3AF'}}>{plan.name}</p>
+                  <div style={{display:'flex',alignItems:'baseline',gap:4,marginBottom:16}}>
+                    <span style={{fontSize:36,fontWeight:900,
+                      color:plan.hl?'#F5B720':'#1A1A1A'}}>{plan.price}</span>
+                    <span style={{fontSize:13,color:plan.hl?'rgba(255,255,255,.4)':'#9CA3AF'}}>{plan.period}</span>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
+                    {plan.feats.map(f=>(
+                      <div key={f} style={{display:'flex',alignItems:'center',gap:8}}>
+                        <div style={{width:16,height:16,borderRadius:'50%',flexShrink:0,
+                          background:plan.hl?'rgba(245,183,32,.2)':'rgba(245,183,32,.15)',
+                          display:'flex',alignItems:'center',justifyContent:'center'}}>
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                            <path d="M1.5 4L3.5 6L6.5 2" stroke="#F09628" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <span style={{fontSize:13,fontWeight:600,
+                          color:plan.hl?'rgba(255,255,255,.85)':'#374151'}}>{f}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button style={{width:'100%',padding:'13px',borderRadius:9999,border:'none',
+                    fontWeight:700,fontSize:14,cursor:'pointer',
+                    background:plan.hl?'linear-gradient(135deg,#F5B720,#F09628)':'#F3F4F6',
+                    color:plan.hl?'white':'#374151',
+                    boxShadow:plan.hl?'0 6px 20px rgba(245,183,32,.4)':'none'}}>
+                    {plan.cta}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {tab==='签约合作'&&<ComingSoon/>}
+        </div>
+      </div>
+      <BottomNav page="business" setPage={setPage}/>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════
+   ROOT APP
+═══════════════════════════════════════════ */
+const App=()=>{
+  const [page,setPage]=useState('onboard');
+  const goPage=(p)=>setPage(p);
+
+  if(page==='onboard'){
+    return <Onboarding onDone={()=>setPage('home')}/>;
+  }
+  if(page==='home') return <Home setPage={goPage}/>;
+  if(page==='creation') return <Creation setPage={goPage}/>;
+  if(page==='square') return <Square setPage={goPage}/>;
+  if(page==='business') return <Business setPage={goPage}/>;
+  return null;
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
