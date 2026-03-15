@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pet-Pop · Onboarding Flow – All States</title>
+<link href="https://fonts.googleapis.com/css2?family=Darker+Grotesque:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Darker Grotesque',sans-serif;background:#E5E7EB;min-height:100vh;padding:48px 40px 80px;-webkit-font-smoothing:antialiased}
+h1.page-title{font-size:28px;font-weight:900;color:#1A1A1A;margin-bottom:4px}
+p.page-sub{font-size:14px;color:#6B7280;margin-bottom:40px;font-weight:600}
+.screens-row{display:flex;gap:40px;align-items:flex-start;overflow-x:auto;padding-bottom:24px}
+.screen-col{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:16px}
+.screen-label{font-size:13px;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.5px;text-align:center}
+.screen-sub{font-size:12px;font-weight:600;color:#9CA3AF;text-align:center;margin-top:-10px}
+.phone{width:390px;height:844px;border-radius:44px;overflow:hidden;box-shadow:0 40px 100px rgba(0,0,0,.22),0 0 0 1.5px rgba(0,0,0,.08);position:relative;background:#fff}
+/* Shared onboarding styles */
+.ob-root{display:flex;flex-direction:column;height:844px;background:linear-gradient(160deg,#FFFBF0,#FFF8E1);overflow:hidden}
+.ob-header{padding:52px 24px 12px;flex-shrink:0}
+.ob-logo{display:flex;align-items:center;gap:8px;margin-bottom:20px}
+.ob-logo-icon{font-size:24px}
+.ob-logo-text{font-size:20px;font-weight:900;color:#F09628}
+.ob-progress-row{display:flex;justify-content:space-between;margin-bottom:6px}
+.ob-progress-label{font-size:13px;font-weight:700;color:#6B7280}
+.ob-progress-num{font-size:13px;font-weight:700;color:#F09628}
+.ob-progress-track{height:6px;background:#E5E7EB;border-radius:3px;overflow:hidden}
+.ob-progress-fill{height:100%;background:linear-gradient(135deg,#F5B720,#F09628);border-radius:3px;transition:width .5s}
+.ob-content{flex:1;overflow-y:auto;padding:0 24px 24px}
+.ob-content::-webkit-scrollbar{display:none}
+.ob-bottom{padding:8px 24px 32px;display:flex;gap:10px;flex-shrink:0}
+.ob-btn-back{width:46px;height:46px;border-radius:14px;border:none;background:#F3F4F6;color:#6B7280;font-size:18px;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.ob-btn-next{flex:1;height:46px;border-radius:9999px;border:none;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s}
+.ob-btn-next.enabled{background:linear-gradient(135deg,#F5B720,#F09628);color:white;box-shadow:0 6px 20px rgba(245,183,32,.4)}
+.ob-btn-next.disabled{background:#E5E7EB;color:#9CA3AF;cursor:not-allowed}
+/* Upload area */
+.upload-area{border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:pointer;transition:all .2s}
+.upload-area.empty{height:190px;border:2.5px dashed #D1D5DB;background:#F9FAFB}
+.upload-area.filled{height:220px;border:2.5px solid #F5B720;background:linear-gradient(160deg,#FFFBF0,#FEF3C7)}
+.upload-icon-box{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);display:flex;align-items:center;justify-content:center;font-size:28px}
+.upload-text{font-size:13px;font-weight:600;color:#6B7280;text-align:center;line-height:1.5}
+.upload-text span{color:#9CA3AF}
+.upload-chip{padding:8px 20px;border-radius:9999px;background:linear-gradient(135deg,#F5B720,#F09628);color:white;font-weight:700;font-size:13px;font-family:inherit}
+.pet-check{position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:#10B981;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:14px}
+/* AI tags */
+.ai-card{background:white;border-radius:16px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.07);margin-top:16px}
+.ai-card-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.tag-list{display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9999px;font-weight:700;font-size:13px}
+.tag-x{width:16px;height:16px;border-radius:50%;border:none;cursor:pointer;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center}
+/* Step 2 */
+.section-title{font-size:22px;font-weight:900;color:#1A1A1A}
+.section-sub{font-size:13px;color:#9CA3AF;margin-top:4px}
+.field-label{font-size:13px;font-weight:700;color:#374151;display:block;margin-bottom:8px}
+.field-label span{color:#EF4444}
+.field-label small{font-weight:400;color:#9CA3AF}
+.name-input{width:100%;padding:14px 16px;border-radius:14px;font-size:14px;font-family:inherit;font-weight:600;color:#1A1A1A;outline:none;transition:all .2s}
+.name-input.empty{border:2px solid #E5E7EB;background:white;box-shadow:none}
+.name-input.filled{border:2px solid #F5B720;background:white;box-shadow:0 0 0 4px rgba(245,183,32,.12)}
+.char-count{text-align:right;font-size:11px;color:#9CA3AF;margin-top:4px}
+.pill-btn{padding:8px 18px;border-radius:9999px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;transition:all .2s}
+.pill-btn.active{border:none;background:linear-gradient(135deg,#F5B720,#F09628);color:white;box-shadow:0 4px 12px rgba(245,183,32,.35)}
+.pill-btn.inactive{border:2px solid #E5E7EB;background:white;color:#6B7280;box-shadow:none}
+.track-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.track-btn{display:flex;align-items:center;gap:10px;padding:14px;border-radius:14px;cursor:pointer;font-family:inherit;transition:all .2s}
+.track-btn.active{border:2px solid #F5B720;background:linear-gradient(135deg,#FEF3C7,#FDE68A);box-shadow:0 4px 14px rgba(245,183,32,.3)}
+.track-btn.inactive{border:2px solid #E5E7EB;background:white;box-shadow:none}
+.track-icon{font-size:22px}
+.track-name{font-size:14px;font-weight:700}
+.track-btn.active .track-name{color:#D97706}
+.track-btn.inactive .track-name{color:#374151}
+/* Step 3 */
+.ip-cover{position:relative;width:180px;height:180px;border-radius:24px;background:linear-gradient(145deg,#F5B720,#F09628);box-shadow:0 12px 40px rgba(245,183,32,.4);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+.ip-cover-shine{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.3),transparent 60%)}
+.ip-name{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-family:Pacifico,cursive;font-size:20px;color:white;font-style:italic;text-shadow:0 2px 8px rgba(0,0,0,.3)}
+.ip-sparkle{position:absolute;top:-8px;right:-8px;font-size:22px}
+.track-badge{display:flex;align-items:center;gap:8px;padding:8px 20px;border-radius:9999px;background:linear-gradient(135deg,#F5B720,#F09628);color:white;font-weight:700;font-size:13px;box-shadow:0 4px 16px rgba(245,183,32,.4)}
+.stats-card{width:100%;background:white;border-radius:16px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.07)}
+.stat-row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.stat-row:last-child{margin-bottom:0}
+.stat-label{font-size:12px;font-weight:700;color:#9CA3AF;width:40px;flex-shrink:0}
+.stat-chip{font-size:11px;padding:2px 8px;border-radius:9999px;font-weight:700}
+.stat-chip.perso{background:#FEF3C7;color:#D97706}
+.stat-chip.lv{background:#F09628;color:white}
+.stat-text{font-size:12px;color:#374151;font-weight:600}
+</style>
+</head>
+<body>
+
+<h1 class="page-title">🐾 Pet-Pop · Onboarding Flow</h1>
+<p class="page-sub">All 5 screen states — Step 1 (×2) · Step 2 (×2) · Step 3</p>
+
+<div class="screens-row">
+
+  <!-- ══════════════════════════════
+       SCREEN 1: Step 1 – Empty Upload
+       ══════════════════════════════ -->
+  <div class="screen-col" id="screen-col-1">
+    <div class="screen-label">Step 1 · 上传照片</div>
+    <div class="screen-sub">Empty state</div>
+    <div class="phone" id="screen-1">
+      <div class="ob-root">
+        <div class="ob-header">
+          <div class="ob-logo">
+            <span class="ob-logo-icon">🐾</span>
+            <span class="ob-logo-text">Pet-Pop</span>
+          </div>
+          <div class="ob-progress-row">
+            <span class="ob-progress-label">上传照片</span>
+            <span class="ob-progress-num">1/3</span>
+          </div>
+          <div class="ob-progress-track">
+            <div class="ob-progress-fill" style="width:33%"></div>
+          </div>
+        </div>
+
+        <div class="ob-content">
+          <div style="margin-bottom:16px">
+            <h2 class="section-title">上传宠物照片</h2>
+            <p class="section-sub">AI 将自动识别你的宠物特征</p>
+          </div>
+          <div class="upload-area empty">
+            <div class="upload-icon-box">📷</div>
+            <p class="upload-text">拖拽照片到此处<br><span>或点击上传</span></p>
+            <div class="upload-chip">选择照片</div>
+          </div>
+        </div>
+
+        <div class="ob-bottom">
+          <button class="ob-btn-next disabled">下一步：填写信息</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       SCREEN 2: Step 1 – Uploaded
+       ══════════════════════════════ -->
+  <div class="screen-col" id="screen-col-2">
+    <div class="screen-label">Step 1 · 上传照片</div>
+    <div class="screen-sub">Photo uploaded + AI tags</div>
+    <div class="phone" id="screen-2">
+      <div class="ob-root">
+        <div class="ob-header">
+          <div class="ob-logo">
+            <span class="ob-logo-icon">🐾</span>
+            <span class="ob-logo-text">Pet-Pop</span>
+          </div>
+          <div class="ob-progress-row">
+            <span class="ob-progress-label">上传照片</span>
+            <span class="ob-progress-num">1/3</span>
+          </div>
+          <div class="ob-progress-track">
+            <div class="ob-progress-fill" style="width:33%"></div>
+          </div>
+        </div>
+
+        <div class="ob-content">
+          <div style="margin-bottom:16px">
+            <h2 class="section-title">上传宠物照片</h2>
+            <p class="section-sub">AI 将自动识别你的宠物特征</p>
+          </div>
+          <div class="upload-area filled">
+            <div style="position:relative">
+              <svg width="130" height="130" viewBox="0 0 220 220" fill="none">
+                <ellipse cx="110" cy="170" rx="55" ry="45" fill="#F5B720"/>
+                <ellipse cx="110" cy="155" rx="50" ry="40" fill="#F5B720"/>
+                <ellipse cx="68" cy="188" rx="18" ry="12" fill="#E6A010" transform="rotate(-15 68 188)"/>
+                <ellipse cx="152" cy="188" rx="18" ry="12" fill="#E6A010" transform="rotate(15 152 188)"/>
+                <ellipse cx="110" cy="148" rx="22" ry="20" fill="#FBBF24"/>
+                <circle cx="110" cy="100" r="48" fill="#C2855A"/>
+                <ellipse cx="77" cy="64" rx="16" ry="20" fill="#A0612A" transform="rotate(-18 77 64)"/>
+                <ellipse cx="143" cy="64" rx="16" ry="20" fill="#A0612A" transform="rotate(18 143 64)"/>
+                <ellipse cx="77" cy="64" rx="9" ry="13" fill="#F9A8D4" transform="rotate(-18 77 64)"/>
+                <ellipse cx="143" cy="64" rx="9" ry="13" fill="#F9A8D4" transform="rotate(18 143 64)"/>
+                <circle cx="97" cy="98" r="7" fill="#1A1A1A"/>
+                <circle cx="123" cy="98" r="7" fill="#1A1A1A"/>
+                <circle cx="99" cy="95.5" r="2.5" fill="white"/>
+                <circle cx="125" cy="95.5" r="2.5" fill="white"/>
+                <ellipse cx="110" cy="113" rx="8" ry="5" fill="#E07070"/>
+                <path d="M102 120 Q110 128 118 120" stroke="#C05050" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <path d="M85 72 L95 54 L110 68 L125 54 L135 72" fill="#F5B720" stroke="#E09910" stroke-width="1.5"/>
+                <rect x="83" y="70" width="54" height="8" rx="4" fill="#F5B720" stroke="#E09910" stroke-width="1"/>
+                <circle cx="95" cy="54" r="4" fill="#3B82F6"/>
+                <circle cx="110" cy="66" r="4" fill="#EF4444"/>
+                <circle cx="125" cy="54" r="4" fill="#3B82F6"/>
+              </svg>
+              <div class="pet-check">✓</div>
+            </div>
+            <span style="font-size:13px;font-weight:600;color:#6B7280">照片已上传</span>
+          </div>
+
+          <div class="ai-card">
+            <div class="ai-card-header">
+              <span style="font-size:14px">✨</span>
+              <span style="font-size:13px;font-weight:700;color:#374151">AI 识别结果</span>
+            </div>
+            <div class="tag-list">
+              <div class="tag" style="background:#FEF3C7;color:#D97706">
+                柴犬系
+                <button class="tag-x" style="background:#D97706aa;color:#D97706">×</button>
+              </div>
+              <div class="tag" style="background:#FCE7F3;color:#BE185D">
+                傲娇型
+                <button class="tag-x" style="background:#BE185Daa;color:#BE185D">×</button>
+              </div>
+              <div class="tag" style="background:#EDE9FE;color:#7C3AED">
+                萌系外貌
+                <button class="tag-x" style="background:#7C3AEDaa;color:#7C3AED">×</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ob-bottom">
+          <button class="ob-btn-next enabled">下一步：填写信息</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       SCREEN 3: Step 2 – Empty Form
+       ══════════════════════════════ -->
+  <div class="screen-col" id="screen-col-3">
+    <div class="screen-label">Step 2 · 填写信息</div>
+    <div class="screen-sub">Empty form</div>
+    <div class="phone" id="screen-3">
+      <div class="ob-root">
+        <div class="ob-header">
+          <div class="ob-logo">
+            <span class="ob-logo-icon">🐾</span>
+            <span class="ob-logo-text">Pet-Pop</span>
+          </div>
+          <div class="ob-progress-row">
+            <span class="ob-progress-label">填写信息</span>
+            <span class="ob-progress-num">2/3</span>
+          </div>
+          <div class="ob-progress-track">
+            <div class="ob-progress-fill" style="width:67%"></div>
+          </div>
+        </div>
+
+        <div class="ob-content">
+          <div style="margin-bottom:18px">
+            <h2 class="section-title">打造你的 IP</h2>
+            <p class="section-sub">越详细，AI 生成效果越好</p>
+          </div>
+
+          <div style="margin-bottom:18px">
+            <label class="field-label">宠物昵称 <span>*</span></label>
+            <input class="name-input empty" placeholder="给宠物起个响亮的名字..." readonly>
+            <div class="char-count">0/12</div>
+          </div>
+
+          <div style="margin-bottom:18px">
+            <label class="field-label">性格特征 <small>（可多选）</small></label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <button class="pill-btn inactive">呆萌</button>
+              <button class="pill-btn inactive">傲娇</button>
+              <button class="pill-btn inactive">活泼</button>
+              <button class="pill-btn inactive">贪吃</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="field-label">主攻赛道 <small>（单选）</small></label>
+            <div class="track-grid">
+              <button class="track-btn inactive"><span class="track-icon">🍗</span><span class="track-name">吃播</span></button>
+              <button class="track-btn inactive"><span class="track-icon">✨</span><span class="track-name">颜值</span></button>
+              <button class="track-btn inactive"><span class="track-icon">🎭</span><span class="track-name">才艺</span></button>
+              <button class="track-btn inactive"><span class="track-icon">📖</span><span class="track-name">故事</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ob-bottom">
+          <button class="ob-btn-back">←</button>
+          <button class="ob-btn-next disabled">下一步：预览 IP</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       SCREEN 4: Step 2 – Filled Form
+       ══════════════════════════════ -->
+  <div class="screen-col" id="screen-col-4">
+    <div class="screen-label">Step 2 · 填写信息</div>
+    <div class="screen-sub">Form filled, ready to proceed</div>
+    <div class="phone" id="screen-4">
+      <div class="ob-root">
+        <div class="ob-header">
+          <div class="ob-logo">
+            <span class="ob-logo-icon">🐾</span>
+            <span class="ob-logo-text">Pet-Pop</span>
+          </div>
+          <div class="ob-progress-row">
+            <span class="ob-progress-label">填写信息</span>
+            <span class="ob-progress-num">2/3</span>
+          </div>
+          <div class="ob-progress-track">
+            <div class="ob-progress-fill" style="width:67%"></div>
+          </div>
+        </div>
+
+        <div class="ob-content">
+          <div style="margin-bottom:18px">
+            <h2 class="section-title">打造你的 IP</h2>
+            <p class="section-sub">越详细，AI 生成效果越好</p>
+          </div>
+
+          <div style="margin-bottom:18px">
+            <label class="field-label">宠物昵称 <span>*</span></label>
+            <input class="name-input filled" value="可乐" readonly>
+            <div class="char-count" style="color:#F09628">2/12</div>
+          </div>
+
+          <div style="margin-bottom:18px">
+            <label class="field-label">性格特征 <small>（可多选）</small></label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <button class="pill-btn inactive">呆萌</button>
+              <button class="pill-btn inactive">傲娇</button>
+              <button class="pill-btn active">活泼</button>
+              <button class="pill-btn active">贪吃</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="field-label">主攻赛道 <small>（单选）</small></label>
+            <div class="track-grid">
+              <button class="track-btn active"><span class="track-icon">🍗</span><span class="track-name">吃播</span></button>
+              <button class="track-btn inactive"><span class="track-icon">✨</span><span class="track-name">颜值</span></button>
+              <button class="track-btn inactive"><span class="track-icon">🎭</span><span class="track-name">才艺</span></button>
+              <button class="track-btn inactive"><span class="track-icon">📖</span><span class="track-name">故事</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ob-bottom">
+          <button class="ob-btn-back">←</button>
+          <button class="ob-btn-next enabled">下一步：预览 IP</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       SCREEN 5: Step 3 – IP Preview
+       ══════════════════════════════ -->
+  <div class="screen-col" id="screen-col-5">
+    <div class="screen-label">Step 3 · 确认 IP</div>
+    <div class="screen-sub">IP generated, ready to start</div>
+    <div class="phone" id="screen-5">
+      <div class="ob-root">
+        <div class="ob-header">
+          <div class="ob-logo">
+            <span class="ob-logo-icon">🐾</span>
+            <span class="ob-logo-text">Pet-Pop</span>
+          </div>
+          <div class="ob-progress-row">
+            <span class="ob-progress-label">确认 IP</span>
+            <span class="ob-progress-num">3/3</span>
+          </div>
+          <div class="ob-progress-track">
+            <div class="ob-progress-fill" style="width:100%"></div>
+          </div>
+        </div>
+
+        <div class="ob-content">
+          <div style="margin-bottom:20px;text-align:center">
+            <h2 class="section-title">你的 IP 诞生了！</h2>
+            <p class="section-sub">AI 已为你生成专属宠物 IP</p>
+          </div>
+
+          <div style="display:flex;flex-direction:column;align-items:center;gap:20px">
+            <!-- IP Cover -->
+            <div class="ip-cover">
+              <div class="ip-cover-shine"></div>
+              <svg width="160" height="160" viewBox="0 0 220 220" fill="none">
+                <ellipse cx="110" cy="170" rx="55" ry="45" fill="#F5B720"/>
+                <ellipse cx="110" cy="155" rx="50" ry="40" fill="#F5B720"/>
+                <ellipse cx="68" cy="188" rx="18" ry="12" fill="#E6A010" transform="rotate(-15 68 188)"/>
+                <ellipse cx="152" cy="188" rx="18" ry="12" fill="#E6A010" transform="rotate(15 152 188)"/>
+                <ellipse cx="110" cy="148" rx="22" ry="20" fill="#FBBF24"/>
+                <circle cx="110" cy="100" r="48" fill="#C2855A"/>
+                <ellipse cx="77" cy="64" rx="16" ry="20" fill="#A0612A" transform="rotate(-18 77 64)"/>
+                <ellipse cx="143" cy="64" rx="16" ry="20" fill="#A0612A" transform="rotate(18 143 64)"/>
+                <ellipse cx="77" cy="64" rx="9" ry="13" fill="#F9A8D4" transform="rotate(-18 77 64)"/>
+                <ellipse cx="143" cy="64" rx="9" ry="13" fill="#F9A8D4" transform="rotate(18 143 64)"/>
+                <circle cx="97" cy="98" r="7" fill="#1A1A1A"/>
+                <circle cx="123" cy="98" r="7" fill="#1A1A1A"/>
+                <circle cx="99" cy="95.5" r="2.5" fill="white"/>
+                <circle cx="125" cy="95.5" r="2.5" fill="white"/>
+                <ellipse cx="110" cy="113" rx="8" ry="5" fill="#E07070"/>
+                <path d="M102 120 Q110 128 118 120" stroke="#C05050" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <path d="M85 72 L95 54 L110 68 L125 54 L135 72" fill="#F5B720" stroke="#E09910" stroke-width="1.5"/>
+                <rect x="83" y="70" width="54" height="8" rx="4" fill="#F5B720" stroke="#E09910" stroke-width="1"/>
+                <circle cx="95" cy="54" r="4" fill="#3B82F6"/>
+                <circle cx="110" cy="66" r="4" fill="#EF4444"/>
+                <circle cx="125" cy="54" r="4" fill="#3B82F6"/>
+              </svg>
+              <div class="ip-name">可乐</div>
+              <div class="ip-sparkle">✨</div>
+            </div>
+
+            <!-- Track badge -->
+            <div class="track-badge">
+              <span>🍗</span>
+              <span>吃播赛道 推荐</span>
+            </div>
+
+            <!-- Stats card -->
+            <div class="stats-card">
+              <div class="stat-row">
+                <span class="stat-label">性格</span>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <span class="stat-chip perso">活泼</span>
+                  <span class="stat-chip perso">贪吃</span>
+                </div>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">等级</span>
+                <span class="stat-chip lv">LV.1 新人</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">奖励</span>
+                <span class="stat-text">🎁 新手礼包 100 Token 已到账</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ob-bottom">
+          <button class="ob-btn-back">←</button>
+          <button class="ob-btn-next enabled">🐾 开始养成！</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end .screens-row -->
+
+<!-- Flow legend -->
+<div style="margin-top:40px;padding:24px 32px;background:white;border-radius:20px;box-shadow:0 2px 16px rgba(0,0,0,.06);display:inline-block">
+  <h3 style="font-size:15px;font-weight:900;color:#1A1A1A;margin-bottom:16px">Flow Map</h3>
+  <div style="display:flex;align-items:center;gap:12px;font-size:13px;font-weight:700">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:56px;height:56px;border-radius:14px;background:#F9FAFB;border:2px dashed #D1D5DB;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9CA3AF;text-align:center;line-height:1.2">S1<br>Empty</div>
+      <span style="font-size:10px;color:#9CA3AF">无照片</span>
+    </div>
+    <span style="color:#D1D5DB;font-size:18px">→</span>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#FFFBF0,#FEF3C7);border:2px solid #F5B720;display:flex;align-items:center;justify-content:center;font-size:22px">🐾</div>
+      <span style="font-size:10px;color:#9CA3AF">上传成功</span>
+    </div>
+    <span style="color:#D1D5DB;font-size:18px">→</span>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:56px;height:56px;border-radius:14px;background:#F9FAFB;border:2px solid #E5E7EB;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9CA3AF;text-align:center;line-height:1.2">S2<br>Empty</div>
+      <span style="font-size:10px;color:#9CA3AF">未填写</span>
+    </div>
+    <span style="color:#D1D5DB;font-size:18px">→</span>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);border:2px solid #F5B720;display:flex;align-items:center;justify-content:center;font-size:10px;color:#D97706;text-align:center;line-height:1.2;font-weight:800">可乐<br>吃播</div>
+      <span style="font-size:10px;color:#9CA3AF">已填写</span>
+    </div>
+    <span style="color:#D1D5DB;font-size:18px">→</span>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(145deg,#F5B720,#F09628);display:flex;align-items:center;justify-content:center;font-size:22px">✨</div>
+      <span style="font-size:10px;color:#9CA3AF">IP 诞生</span>
+    </div>
+    <span style="color:#D1D5DB;font-size:18px">→</span>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#F5B720,#F09628);display:flex;align-items:center;justify-content:center;font-size:22px">🏠</div>
+      <span style="font-size:10px;color:#9CA3AF">进入主页</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
