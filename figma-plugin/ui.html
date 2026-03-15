@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Inter, -apple-system, sans-serif; }
+  body { background: #fff; padding: 20px; }
+  h2 { font-size: 14px; font-weight: 700; color: #1A1A1A; margin-bottom: 6px; }
+  p { font-size: 12px; color: #6B7280; line-height: 1.5; margin-bottom: 16px; }
+  .screens-info { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+  .screen-item { font-size: 11px; color: #374151; background: #F9FAFB; border-radius: 6px; padding: 6px 10px; font-weight: 600; }
+  .screen-item span { color: #9CA3AF; font-weight: 400; margin-left: 6px; }
+  button { width: 100%; padding: 12px; border-radius: 8px; border: none; background: linear-gradient(135deg,#F5B720,#F09628); color: white; font-size: 14px; font-weight: 700; cursor: pointer; }
+  button:disabled { background: #E5E7EB; color: #9CA3AF; cursor: not-allowed; }
+  #status { font-size: 12px; color: #6B7280; text-align: center; margin-top: 10px; min-height: 18px; }
+  #status.error { color: #EF4444; }
+  #status.success { color: #10B981; }
+</style>
+</head>
+<body>
+  <h2>🐾 Pet-Pop Onboarding Screens</h2>
+  <p>在当前 Figma 文件中创建全部 5 个 Onboarding 状态画面（390×844）。</p>
+  <div class="screens-info">
+    <div class="screen-item">S1 · 上传照片<span>Empty state</span></div>
+    <div class="screen-item">S2 · 上传照片<span>Photo uploaded + AI tags</span></div>
+    <div class="screen-item">S3 · 填写信息<span>Empty form</span></div>
+    <div class="screen-item">S4 · 填写信息<span>Filled — 可乐 / 吃播</span></div>
+    <div class="screen-item">S5 · 确认 IP<span>IP preview → 开始养成</span></div>
+  </div>
+  <button id="btn" onclick="create()">✦ 生成 Onboarding 画面</button>
+  <div id="status"></div>
+
+  <script>
+    function create() {
+      document.getElementById('btn').disabled = true;
+      document.getElementById('status').textContent = '生成中...';
+      document.getElementById('status').className = '';
+      parent.postMessage({ pluginMessage: { type: 'create' } }, '*');
+    }
+    window.onmessage = (e) => {
+      const msg = e.data.pluginMessage;
+      if (!msg) return;
+      const s = document.getElementById('status');
+      if (msg.type === 'status') { s.textContent = msg.text; }
+      if (msg.type === 'done') {
+        s.textContent = `✓ ${msg.count} 个画面已生成！`;
+        s.className = 'success';
+      }
+      if (msg.type === 'error') {
+        s.textContent = '错误: ' + msg.message;
+        s.className = 'error';
+        document.getElementById('btn').disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
